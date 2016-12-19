@@ -1,0 +1,52 @@
+Technical documentation for processing discharge and SSC-data for sedigraph-reconstruction and sediment yield calculation
+3.4.2013, Till Francke
+
+Ref.: Zimmermann, A., Francke, T., & Elsenbeer, H. (2012). Forests and erosion: Insights from a study of suspended-sediment dynamics in an overland flow-prone rainforest catchment. Journal of Hydrology, 428-429, 170–181. doi:10.1016/j.jhydrol.2012.01.039
+
+Software requirements: R (r-project.org), packages randomForest, quantregForest
+
+Process the numbered directories step-by-step. Where adjustments need to be made in the scripts, the respective line is referred to with a ##tag that can be searched for in the source code.
+Stick to relative paths, change R's working directory at the very beginning to the place where the script resides (in R, click "File->Change Directory")
+
+0_data (data preparation)
+  - Provide continous data for discharge and rainfall and intermittent SSC-data in the directory 0_data/. Use "H1_discharge.txt", "TESP_5minres_1989_2010.txt" and "H1_ssc.txt" as templates (check the column names). Specify temporal resolution, names and format of date column in settings.R.
+
+1_rainfall_correction (correction of rainfall data)
+	(obsolete for you: copy your rainfall file to 1_rainfall_correction/ and append "_corrected" to the name of your rainfall input file like "0_data/TESP_5minres_1989_2010.txt_corrected")
+	
+2_predictor_generation\ (generation of ancillary predictors)
+	- in runme.R adjust 
+	##settings for ancillary predictors to be derived
+	Provide names of primary primary predictors, number of aggregation levels and factor for aggregation steps
+	(Be warned, though. If you add 20 raingauges and compute 9 aggregation levels of each, you will increase the number of data roughly by 10. This may turn out slow, or even run into memory problems. Moreover, if ANY of the series (or their children) has NODATA values for any timestep, then SSC-samples for that timestep cannot be used, nor SSC predicted. If you encounter a great loss in training data, successively exclude predictors that hold little explanatory power and/or have lots of gaps.)
+	- start runme.R
+	- check the generated files "ancillary_data_5_train_ssc.txt" and "ancillary_data_5.txt" (or similar names). If they look OK (ie correct column names, not too many NAs - some at the beginning are OK) you may delete them, as the further scripts use the binary versions.
+	
+3_record_selection_discharge_model\ (select records for training the discharge model)
+    (obsolete for you)
+	
+4_model_building\ (builds RF and QRF model from training data and displays their performance)
+	- in settings.R adjust parameters at ##4_model_building
+		- if you want to trim the model
+			- enable "importance"
+			- run and analyze the resulting VI-plots
+			- add the predictors of lowest importance to "dontuse_cols"
+			- re-iterate and watch performance
+		- if desired, enable plotting at ##enable/disable plots 
+		- adjust the number of desired periods for crosswise validation at ##number of validation periods
+	- start runme.R
+	
+5_model_application\ (apply QRF model build in previous step)
+	- edit flood_numbering.txt to specify the time periods (events, months, years) for which the yield calculations will be performed.
+	- in settings.R adjust call parameters at ##5_model_application
+	If parallelisation (multiprocessor computer, cluster, multiple computers) is desired
+		- in replicate_dirs.R adjust ##selection of flood periods that will be treated
+		- run replicate_dirs.R (generates 20 directories based on the files in ./templ)
+		- run call_mc.R in each generated folder (alternatively, run start_jobs.sh to submit jobs to a batch system)
+	no parallelisation (single computer)	
+		- copy /templ/call_mc.R to /MC_01
+		- edit /MC_01/conf.txt: replace "1:10" by the range of periods (in flood_numbering.txt) that should be computed
+		- run /MC_01/call_mc.R
+	
+6_visualise_results\
+	- various visualisations that need to be customized according to specific problem

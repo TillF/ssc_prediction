@@ -1,0 +1,11 @@
+#!/bin/bash
+#PBS -N $dest_dir
+#PBS -M francke@uni-potsdam.de
+#PBS -m abe
+#PBS -j oe
+#PBS -l ncpus=1
+#PBS -l walltime=48:00:00
+#PBS -l mem=2gb
+cd $PBS_O_WORKDIR
+R -f call_mc.r --vanilla --slave > console.out
+

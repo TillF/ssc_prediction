@@ -1,0 +1,57 @@
+# generate ancillary predictors from rainfall data
+ 
+source("../settings.R")
+
+precip_data = read.table(paste(precip_data_file, "_corrected", sep=""), header = TRUE, sep = "\t", dec = ".", na.strings = c("NaN","NA"), stringsAsFactors=F)
+precip_data$datenum    = as.POSIXct(strptime(precip_data$date, format=fmt_precip, tz="GMT"))  #convert string to date
+precip_data$date       = NULL                                    #discard string colummn
+
+ssc_data = read.table(ssc_data_file, header = TRUE, sep = "\t", dec = ".", na.strings = c("NaN","NA"), stringsAsFactors=F)
+ssc_data$datenum    = as.POSIXct(strptime(ssc_data$date, format=fmt_ssc, tz="GMT"))  #convert string to date
+ssc_data$date       = NULL                                      #discard string colummn
+
+discharge_data = read.table(discharge_data_file, header = TRUE, sep = "\t", dec = ".", na.strings = c("NaN","NA"), stringsAsFactors=F)
+discharge_data$datenum    = as.POSIXct(strptime(discharge_data$date, format=fmt_discharge, tz="GMT"))  #convert string to date
+discharge_data$date       = NULL                                      #discard string colummn
+
+mydata=merge(precip_data,ssc_data,all = TRUE)                              #merge precip data with ssc-data
+rain_gauges = names(precip_data)[-1]
+
+names(mydata)=c("datenum",rain_gauges,"ssc")   #rename columns of data frame
+rm(precip_data)
+rm(ssc_data)
+
+mydata=merge(mydata,discharge_data,all = TRUE) #merge precip+ssc data with discharge-data  
+names(mydata)=c("datenum",rain_gauges,"ssc","discharge")                                               #rename columns of data frame
+rm(discharge_data)
+
+contiguous_time = seq(from=min(mydata$datenum),to=max(mydata$datenum),by=tres)  #create contiguous time line (opposed to intermittent bucket data)
+mydata=merge(data.frame(datenum=contiguous_time),mydata,all = TRUE)                        
+names(mydata)=c("datenum",rain_gauges,"ssc","discharge")                                               #rename columns of data frame
+rm(contiguous_time)
+
+ #mydata=mydata[min(which(!is.na(mydata[,"discharge"]))) +(1:1000),]     ##rr test option
+
+source("compute_ancillary_predictors.R")
+
+##settings for ancillary predictors to be derived
+#name:                      name of primary predictor
+#n_aggregation_levels:       number of progressive accumulation levels  
+#aggregation_steps_factor:  progression factor of aggregation time between levels
+
+  anc_predictors_settings= data.frame(
+  name=c(rain_gauges,"discharge"),
+  n_aggregation_levels = c(rep(9, length(rain_gauges)),4),
+  aggregation_steps_factor = c(rep(2, length(rain_gauges)),2),
+  stringsAsFactors = FALSE     
+  )
+  
+  ancillary_data_filename = paste("ancillary_data_",tres,sep="") #name of file to store the generated data to
+
+  compute_ancillary_predictors(anc_predictors_settings = anc_predictors_settings,
+    ancillary_data_filename = ancillary_data_filename)
+
+
+   cat("finished.\7\nPlease proceed with ../3_record_selection_discharge_model (see readme.txt)\n")
+
+   
