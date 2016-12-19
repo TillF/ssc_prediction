@@ -13,7 +13,7 @@
 	ssc_data_file    = "0_data\\H1_ssc_puebla.txt" #input file containing intermittent SSC samples (single gauge)
 	fmt_ssc = "%d.%m.%Y %H:%M"  #input format of date column
 
-  gauge_name="H1" #name of discharge gauge
+  gauge_name="h1" #name of discharge gauge
   
 ##4_model_building
   mtrybest = "tune" #RF-parameter, set to "tune" to auto-adjust or a fixed value (1 to number of predictors)

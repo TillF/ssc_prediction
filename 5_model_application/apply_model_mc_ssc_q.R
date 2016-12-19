@@ -1,5 +1,8 @@
 # apply selected model in Monte-Carlo-mode: perform [nrealisations] by randomly choosing the prediction interval quantiles from pred_quantile
 
+# 14.12.2016
+# support of multiple discharge models
+
 # 17.9.2013
 # proper date formatting in output files (possibly DST problem before)
 
@@ -71,7 +74,7 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
   complete_view=NULL   # ALEX: set back to NULL from TRUE
   saves_per_period = 2  # how often memory snapshots (for resuming broken runs) are saved to disk
 	
-	
+
   if (is.null(predictordata))
   { # load predictordata from ASCII file   #load predictordata of specified gauge_name prepared with gen_data_4_apply.m
 	datain = read.table(paste("../predictors_",gauge_name,".txt",sep = ""), header = TRUE, sep = "\t", quote = "\"'", dec = ".", na.strings = "NaN",strip.white=T,stringsAsFactors=F)
@@ -83,7 +86,7 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
    	rm(mydata)
   }
   
-	if (replaceNAs)
+	if (replaceNA)
 	{
 	  print("replaceNAs enabled, replacing NAs by -999")
 	  for (i in 1:ncol(datain))
@@ -98,8 +101,12 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
       !is.na(qrf_model_discharge_arg[1])) qrf_model_discharge = qrf_model_discharge_arg     #if function arguments are given, use them instead of global variables
   if (!is.na(qrf_model_ssc_arg[1]))       qrf_model_ssc       = qrf_model_ssc_arg
 
+  if (length(qrf_model_discharge) > 1)
+    nrealisations = nrealisations - (nrealisations %% length(qrf_model_discharge)) #reduce number of realizations to multiple of number of discharge models to ensure equal shares
+  
+  
   #discard unneeded columns 
-  unneeded_columns=which(!(names(datain) %in% c("datenum", dimnames(qrf_model_ssc$importance)[[1]], dimnames(qrf_model_discharge$importance)[[1]])))
+  unneeded_columns=which(!(names(datain) %in% c("datenum", dimnames(qrf_model_ssc$importance)[[1]], dimnames(qrf_model_discharge[[1]]$importance)[[1]])))
   if (is.null(qrf_model_discharge)) unneeded_columns=setdiff(unneeded_columns, which(names(datain) == "discharge")) #preserve discharge, if it is not to be modelled
   for (i in sort(unneeded_columns, decreasing=TRUE))
     datain[,i]=NULL 
@@ -133,6 +140,8 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 	{
     source(paste(base_dir,"fload_flood_numbering.R",sep=""))		#load flood numbering scheme
   	flood_numbering=fload_flood_numbering(gauge_name=gauge_name,individual=individual, do_interfloods=do_interfloods)
+  	if (nrow(flood_numbering) == 0)
+  	  stop(paste0("No (valid) flood periods found. Check flood_numbering.txt and gauge_name in settings.R"))
   	if (do_interfloods)
   	{
       flood_numbering$begin[1]=min(date_vec)	#set begin of first pre-flood period to begin of time-series 
@@ -153,15 +162,23 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 	if (is.null(subset_periods))
 		subset_periods=1:nrow(flood_numbering) #use all periods, if not specified from otherwise
 	
-#	subset_periods=subset_periods[which((subset_periods>=1) & (subset_periods<=nrow(flood_numbering)))]	#limit period selection to available periods
-#  subset_periods=which(flood_numbering$no %in% subset_periods)       #convert flood-ids to index of flood_numbering
+  not_there = subset_periods[subset_periods > nrow(flood_numbering)]
+  if (any (not_there))
+  {  
+    warning(paste0("Selected periods ", paste0(not_there, collapse=", "), " not contained in file, ignored. Check flood_periods in settings.R"))
+    subset_periods=subset_periods[which((subset_periods>=1) & (subset_periods<=nrow(flood_numbering)))]	#limit period selection to available periods
+  }
 
-
-	mod_name="quantForest"
+  if (length (subset_periods) == 0)
+  {  
+    stop(paste0("No (valid) periods selected, nothing done. Check flood_periods in settings.R"))
+  }
+  
+  mod_name="quantForest"
 
   #reference vectors to columns to match the same order as in the training data for the forest-models (needed by *Forest :-[)
 	ssc_model_column_indices=which(names(mydata_predict) %in% dimnames(qrf_model_ssc$importance)      [[1]]) 
-	q_model_column_indices  =which(names(mydata_predict) %in% dimnames(qrf_model_discharge$importance)[[1]]) 
+	q_model_column_indices  =which(names(mydata_predict) %in% dimnames(qrf_model_discharge[[1]]$importance)[[1]]) 
 
 
   discharge=mydata_predict$discharge    #save discharge in any case
@@ -230,9 +247,18 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
       rand_quant=rep(seq(from=quantile_range[1], to=quantile_range[2],length.out=nrealisations)   ,2)	else	#step through quantile range systematically
       rand_quant=runif(2*nrealisations,min=quantile_range[1],max=quantile_range[2])		#draw 2*nrealisations random number from quantile range
 
-			dist_ssc_timestep=as.vector(predict(qrf_model_ssc,      newdata=mydata_predict[i,ssc_model_column_indices],quantiles =rand_quant[ 1:nrealisations]))	#do prediction for this record
-      if (!is.null(qrf_model_discharge))
-        dist_q_timestep  =as.vector(predict(qrf_model_discharge,newdata=mydata_predict[i,  q_model_column_indices],quantiles =rand_quant[(1:nrealisations)+nrealisations]))	#do prediction for this record
+			#ssc prediction
+			dist_ssc_timestep=as.vector(predict(qrf_model_ssc,      newdata=mydata_predict[i,ssc_model_column_indices], what =rand_quant[ 1:nrealisations]))	#do prediction for this record
+		
+			#Q-prediction	
+			dist_q_timestep  =rep (NA, nrealisations)	#create empty vector
+			slice_width = nrealisations / length(qrf_model_discharge)  #slice (number of realiszations) to fill by each of the discharge models
+			if (!is.null(qrf_model_discharge))
+        for (mod_no in 1:length(qrf_model_discharge)) #go through all discharge models in list
+        {
+          part = (1:slice_width) + (mod_no-1)*slice_width  #the part to fill by the current model
+          dist_q_timestep[part]  =as.vector(predict(qrf_model_discharge[[mod_no]], newdata=mydata_predict[i, q_model_column_indices], what =rand_quant[(1:nrealisations)+nrealisations][part]))	#do prediction for this record
+        }
       else
        dist_q_timestep  =rep (discharge[i], nrealisations)	#fake prediction, just use recorded discharge for this record
     
