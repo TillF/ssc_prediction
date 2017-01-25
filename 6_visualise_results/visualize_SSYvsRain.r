@@ -7,7 +7,7 @@ load(file=paste("../2_predictor_generation/ancillary_data_",tres,sep=""))
 
 mc_dir = "../5_model_application/"    #directories containing the results of MC-sumulation
 #load flood number scheme
-source(paste(mc_dir,"fload_flood_numbering.r",sep=""))	#load flood numbering scheme
+source(paste(mc_dir,"fload_flood_numbering.R",sep=""))	#load flood numbering scheme
 flood_numbering=fload_flood_numbering(gauge_name,individual=T,base_dir=mc_dir)
 flood_numbering=flood_numbering[flood_numbering$no>0,]   #discard interflood periods
 
@@ -43,12 +43,12 @@ conf_lim = predict(lin_regression, newdata = newData, interval = "confidence", l
 conf_lim[conf_lim < 0] = NA
 pred_lim[pred_lim < 0] = NA
 
-plot(ssyields$annual_rain, exp(ssyields$yield), xlab = "annual_rain (mm)", ylab = "SSY (kg)", ylim = c(0,max(exp(ssyields$yield), pred_lim, na.rm = TRUE)),pch=".") # Create the plot
+plot(ssyields$annual_rain, exp(ssyields$yield), xlab = "annual_rain (mm)", ylab = "SSY (kg)", ylim = c(0,max(exp(ssyields$yield), pred_lim, na.Rm = TRUE)),pch=".") # Create the plot
 
 matlines(newData$annual_rain, exp(pred_lim), lty = c(1, 4, 4), lwd = 1) # Draw the fitted regression line and the prediction and confidence intervals
 matlines(newData$annual_rain, exp(conf_lim), lty = c(1, 3, 3), lwd = 2)
 
-legend("topleft", max(pred_lim, na.rm = TRUE), legend = c("Fitted Line", "Confidence Bands", "Prediction Bands"),
+legend("topleft", max(pred_lim, na.Rm = TRUE), legend = c("Fitted Line", "Confidence Bands", "Prediction Bands"),
 lty = c(1, 3, 4), lwd = c(2,1,2) , horiz = FALSE, cex = 0.9) # Draw the legend
 
 # use mean annual SSY instead of MC-distribution

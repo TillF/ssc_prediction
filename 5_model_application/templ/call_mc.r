@@ -2,19 +2,27 @@
 
   source("../../settings.R")
   library(quantregForest)
-  if (installed.packages()["quantregForest","Version"]  < "0.2-2") stop("quantregForest Version >= 0.2-2 required")
+  if (installed.packages()["quantregForest","Version"]  < "0.3-5") stop("quantregForest Version >= 0.3-5 required")
 
-  source("../../5_model_application/apply_model_mc_ssc_q.R")
+  source("../apply_model_mc_ssc_q.R")
 
-  load(file  ="../../4_model_building/model_ssc.RData")       #load ssc-model from file (must be named "best_model_ssc" or adjust name of model in next line)
+  load(file  ="../../5_model_building/model_ssc.RData")       #load ssc-model from file (must be named "best_model_ssc" or adjust name of model in next line)
   qrf_model_ssc  =best_model
   rm(best_model)
 
-  discharge_model_file = "../../4_model_building/model_discharge.RData"
+  discharge_model_file = "../../5_model_building/model_discharge.RData"
+  discharge_multi_model_file = sub(discharge_model_file, pattern = "\\.RData", repl="_multi.Rdata")
+  
+  if (file.exists(discharge_multi_model_file))   #try to load multi-model file first
+  {
+    load(file =discharge_multi_model_file)       #load mulit discharge-model from file (must be a list of models named "model_variants" or adjust name of model in next line)
+    qrf_model_discharge  =model_variants
+    rm(model_variants)
+  } else
   if (file.exists(discharge_model_file))
   {
     load(file =discharge_model_file)       #load discharge-model from file (must be named "best_model_discharge" or adjust name of model in next line)
-    qrf_model_discharge  =best_model
+    qrf_model_discharge  =list(best_model)
     rm(best_model)
   } else
   qrf_model_discharge = NULL               #no model for discharge available
@@ -34,6 +42,6 @@
   set.seed(seed) #for making results reproducable independent of MC-randomness
   ##call MC-model
   xx = apply_model_mc(gauge_name=gauge_name, nrealisations=nrealisations, q_conf=q_conf, subset_periods=c(flood_period),individual=FALSE, verbose=verbose,
-      predictordata=paste("../../2_predictor_generation/ancillary_data_",tres,".RData",sep=""), iqr=iqr, write_dist=write_dist,overwrite=overwrite, do_interfloods=do_interfloods)
+      predictordata=paste("../../3_predictor_generation/ancillary_data_",tres,".RData",sep=""), iqr=iqr, write_dist=write_dist,overwrite=overwrite, do_interfloods=do_interfloods)
 
 

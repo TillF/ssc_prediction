@@ -75,7 +75,7 @@ if (mtrybest=="tune")   #tune mtry-parameter for randomForest
   if (model_type=="RF")
   {
     rf_model = randomForest(mydata_training[,response_var_index] ~ ., data = mydata_training[,-dontuse], importance = importance, mtry=mtrybest, ntree = ntree) 
-    print(round(importance(rf_model), 2)[ sort.int(importance(rf_model)[,1], index.return=TRUE)$ix,])
+    print(round(importance(rf_model), 2)[ sort.int(importance(rf_model)[,1], index.Return=TRUE)$ix,])
 
     if (doplot)
     {
@@ -190,7 +190,7 @@ print("apply model (full training period)"); flush.console()
 
   test_period_dates=data.frame()
 
-  maxssc= max(mydata[,response_var_index_validation], na.rm=TRUE) #for scaling plots
+  maxssc= max(mydata[,response_var_index_validation], na.Rm=TRUE) #for scaling plots
 
   for (test_period in 1:n_valid_periods)
   {

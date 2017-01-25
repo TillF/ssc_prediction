@@ -5,7 +5,7 @@ mc_dir = "../5_model_application/"    #directories containing the results of MC-
 #load flood number scheme
 source("../settings.R")
 
-source(paste(mc_dir,"fload_flood_numbering.r",sep=""))	#load flood numbering scheme
+source(paste(mc_dir,"fload_flood_numbering.R",sep=""))	#load flood numbering scheme
 flood_numbering=fload_flood_numbering(gauge_name,individual=T,base_dir=mc_dir)
 flood_numbering=flood_numbering[flood_numbering$no>0,]   #discard interflood periods
 

@@ -53,7 +53,7 @@
         if(cum_period==1) #no actual cumulation, just offset by cumperiod
           mydata[(cum_period+1):nrow(mydata),target_columns]          = mydata   [1:(nrow(mydata)-cum_period), source_column] else
         for (j in ((-cum_start+1):nrow(mydata)))      #actual aggregation
-          mydata[j,target_columns] = apply(as.matrix(mydata[j + (cum_start : (cum_start+cum_period-1)), source_column],ncol=1), 2 ,sum,na.rm=FALSE)
+          mydata[j,target_columns] = apply(as.matrix(mydata[j + (cum_start : (cum_start+cum_period-1)), source_column],ncol=1), 2 ,sum,na.Rm=FALSE)
   
       }
 

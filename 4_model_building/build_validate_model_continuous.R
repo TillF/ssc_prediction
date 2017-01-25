@@ -40,7 +40,7 @@ doplot=FALSE
 
 ####
 
-  source("../5_model_application/apply_model_mc_ssc_q.r")
+  source("../5_model_application/apply_model_mc_ssc_q.R")
 
   predict_mc = function(imydata)      ##apply mc-routine on test-data set
   {
@@ -103,7 +103,7 @@ for (j in 1:length(percentages4test))
       }
     	
       goodness$trainingNS[i]=nashS(ssc_pred,mydata_training_selected$ssc)
-    	goodness$trainingRMSE[i]=sqrt(mean((ssc_pred-mydata_training_selected$ssc)^2,na.rm=TRUE))
+    	goodness$trainingRMSE[i]=sqrt(mean((ssc_pred-mydata_training_selected$ssc)^2,na.Rm=TRUE))
 
 #    	plot(ssc_pred,mydata_training_selected$ssc)
 #      windows()
@@ -121,7 +121,7 @@ for (j in 1:length(percentages4test))
         else
           ssc_pred=predict_mc(mydata_test[,-response_var_index])               
         goodness$testNS[i]    =nashS(ssc_pred,mydata_test$ssc)     	
-       	goodness$testRMSE[i]  =sqrt(mean((ssc_pred-mydata_test$ssc)^2,na.rm=TRUE))
+       	goodness$testRMSE[i]  =sqrt(mean((ssc_pred-mydata_test$ssc)^2,na.Rm=TRUE))
 
         print(paste("ns_ntraining =",goodness$trainingNS[i],"; ns_test =",goodness$testNS[i])); flush.console()
       }
