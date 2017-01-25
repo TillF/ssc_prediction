@@ -26,6 +26,8 @@ set.seed(1)                        #enable reproducability
 
 
  library(randomForest)
+ if (model_type!="RF")
+    library(quantregForest)
 # load training data
   load(file=paste("../3_predictor_generation/ancillary_data_",tres,"_train_",response_variable,".RData",sep=""))     #load training data
   print("predictor data loaded"); flush.console()
@@ -75,7 +77,7 @@ if (mtrybest=="tune")   #tune mtry-parameter for randomForest
   if (model_type=="RF")
   {
     rf_model = randomForest(mydata_training[,response_var_index] ~ ., data = mydata_training[,-dontuse], importance = importance, mtry=mtrybest, ntree = ntree) 
-    print(round(importance(rf_model), 2)[ sort.int(importance(rf_model)[,1], index.Return=TRUE)$ix,])
+    print(round(importance(rf_model), 2)[ sort.int(importance(rf_model)[,1], index.return=TRUE)$ix,])
 
     if (doplot)
     {
@@ -84,10 +86,8 @@ if (mtrybest=="tune")   #tune mtry-parameter for randomForest
       savePlot(filename=paste("../saved_plots/",gauge_name,"_importance.wmf",sep=""),type="wmf")
     }  
   }   else #build actual model
-	{
-	  library(quantregForest)
 	  rf_model=  quantregForest(mydata_training[,-dontuse], mydata_training[,response_var_index], mtry = mtrybest, ntree = ntree, nodesize=5, keep.inbag=TRUE)
-  }
+  
   print("saving model"); flush.console()
   best_model=rf_model # rename before saving
   if (model_type!="RF") #only QRF model can be used in MC-routine
@@ -190,7 +190,7 @@ print("apply model (full training period)"); flush.console()
 
   test_period_dates=data.frame()
 
-  maxssc= max(mydata[,response_var_index_validation], na.Rm=TRUE) #for scaling plots
+  maxssc= max(mydata[,response_var_index_validation], na.rm=TRUE) #for scaling plots
 
   for (test_period in 1:n_valid_periods)
   {

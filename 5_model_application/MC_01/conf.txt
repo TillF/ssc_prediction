@@ -1,2 +1,0 @@
-seed	flood_period
-1	1:10

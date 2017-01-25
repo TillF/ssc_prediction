@@ -40,7 +40,7 @@ fload_flood_numbering=function(gauge_name,individual=T,base_dir="../", do_interf
 	} else
   tt2 = tt  
 	
-  order_ix=sort.int(tt2$end, index.Return=TRUE)$ix
+  order_ix=sort.int(tt2$end, index.return=TRUE)$ix
   
 	flood_info=data.frame(no=tt2$no[order_ix],begin=tt2$begin[order_ix],end=tt2$end[order_ix])	
 	return(flood_info)

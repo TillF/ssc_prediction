@@ -1,5 +1,8 @@
 # apply selected model in Monte-Carlo-mode: perform [nrealisations] by randomly choosing the prediction interval quantiles from pred_quantile
 
+# 25.1.2017
+# support of multiple SSC models
+
 # 14.12.2016
 # support of multiple discharge models
 
@@ -101,12 +104,14 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
       !is.na(qrf_model_discharge_arg[1])) qrf_model_discharge = qrf_model_discharge_arg     #if function arguments are given, use them instead of global variables
   if (!is.na(qrf_model_ssc_arg[1]))       qrf_model_ssc       = qrf_model_ssc_arg
 
-  if (length(qrf_model_discharge) > 1)
-    nrealisations = nrealisations - (nrealisations %% length(qrf_model_discharge)) #reduce number of realizations to multiple of number of discharge models to ensure equal shares
-  
-  
+  #reduce number of realizations to multiple of number of discharge models to ensure equal shares
+    nrealisations = max(which(
+                    (1:nrealisations) %% length(qrf_model_discharge) == 0 &
+                    (1:nrealisations) %% length(qrf_model_ssc      ) == 0
+                  )) 
+                    
   #discard unneeded columns 
-  unneeded_columns=which(!(names(datain) %in% c("datenum", dimnames(qrf_model_ssc$importance)[[1]], dimnames(qrf_model_discharge[[1]]$importance)[[1]])))
+  unneeded_columns=which(!(names(datain) %in% c("datenum", dimnames(qrf_model_ssc[[1]]$importance)[[1]], dimnames(qrf_model_discharge[[1]]$importance)[[1]])))
   if (is.null(qrf_model_discharge)) unneeded_columns=setdiff(unneeded_columns, which(names(datain) == "discharge")) #preserve discharge, if it is not to be modelled
   for (i in sort(unneeded_columns, decreasing=TRUE))
     datain[,i]=NULL 
@@ -177,7 +182,7 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
   mod_name="quantForest"
 
   #reference vectors to columns to match the same order as in the training data for the forest-models (needed by *Forest :-[)
-	ssc_model_column_indices=which(names(mydata_predict) %in% dimnames(qrf_model_ssc$importance)      [[1]]) 
+	ssc_model_column_indices=which(names(mydata_predict) %in% dimnames(qrf_model_ssc[[1]]$importance)      [[1]]) 
 	q_model_column_indices  =which(names(mydata_predict) %in% dimnames(qrf_model_discharge[[1]]$importance)[[1]]) 
 
 
@@ -226,14 +231,14 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
  		median_ssc=rep  (0, (stop_record_ix-start_record_ix+1))	#for storing median of simulated values for each timestep and all realisations
     if (iqr) 
       iqr_ssc   =cbind(median_ssc,median_ssc)        #for storing interquartile-range of simulated values for each timestep and all realisations
-  	dist_ssc_timestep=rep(0,nrealisations)					#for collecting distribution of ssc of timestep 
+  	dist_ssc_timestep=rep(NA, nrealisations)					#for collecting distribution of ssc of timestep 
 
 		q_sim       =array(0,c(stop_record_ix-start_record_ix+1,nrealisations))	#store simulated values for each timestep and each realisation
  		mean_q  =rep  (0, (stop_record_ix-start_record_ix+1))	#for storing mean of simulated values for each timestep and all realisations
  		median_q=rep  (0, (stop_record_ix-start_record_ix+1))	#for storing median of simulated values for each timestep and all realisations
     if (iqr) 
       iqr_q   =cbind(median_q,median_q)        #for storing interquartile-range of simulated values for each timestep and all realisations
-  	dist_q_timestep=rep(0,nrealisations)					#for collecting distribution of ssc of timestep 
+  	dist_q_timestep=rep(NA, nrealisations)					#for collecting distribution of ssc of timestep 
 
 
 
@@ -245,11 +250,19 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 
 		  if (write_dist)       
       rand_quant=rep(seq(from=quantile_range[1], to=quantile_range[2],length.out=nrealisations)   ,2)	else	#step through quantile range systematically
-      rand_quant=runif(2*nrealisations,min=quantile_range[1],max=quantile_range[2])		#draw 2*nrealisations random number from quantile range
+      rand_quant=runif(2*nrealisations,min=quantile_range[1], max=quantile_range[2])		#draw 2*nrealisations random number from quantile range
 
-			#ssc prediction
-			dist_ssc_timestep=as.vector(predict(qrf_model_ssc,      newdata=mydata_predict[i,ssc_model_column_indices], what =rand_quant[ 1:nrealisations]))	#do prediction for this record
-		
+			#ssc-prediction
+			slice_width = nrealisations / length(qrf_model_ssc)  #slice (number of realisations) to fill by each of the discharge models
+			
+			#dist_ssc_timestep=as.vector(predict(qrf_model_ssc,      newdata=mydata_predict[i,ssc_model_column_indices], what =rand_quant[ 1:nrealisations]))	#do prediction for this record
+			
+			for (mod_no in 1:length(qrf_model_ssc)) #go through all discharge models in list
+			{
+			  part = ((1:nrealisations)-1) %% length(qrf_model_ssc) == (mod_no-1)  #the part to fill by the current model
+			  dist_ssc_timestep[part]  =as.vector(predict(qrf_model_ssc[[mod_no]], newdata=mydata_predict[i, ssc_model_column_indices], what =rand_quant[1:nrealisations][part]))	#do prediction for this record
+			}
+			
 			#Q-prediction	
 			dist_q_timestep  =rep (NA, nrealisations)	#create empty vector
 			slice_width = nrealisations / length(qrf_model_discharge)  #slice (number of realiszations) to fill by each of the discharge models

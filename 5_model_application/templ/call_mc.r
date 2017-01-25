@@ -1,32 +1,33 @@
 # load models, ancillary data and config-file and call MC-routine (apply_model_mc)
-
+  
   source("../../settings.R")
   library(quantregForest)
   if (installed.packages()["quantregForest","Version"]  < "0.3-5") stop("quantregForest Version >= 0.3-5 required")
 
   source("../apply_model_mc_ssc_q.R")
 
-  load(file  ="../../5_model_building/model_ssc.RData")       #load ssc-model from file (must be named "best_model_ssc" or adjust name of model in next line)
-  qrf_model_ssc  =best_model
-  rm(best_model)
-
-  discharge_model_file = "../../5_model_building/model_discharge.RData"
-  discharge_multi_model_file = sub(discharge_model_file, pattern = "\\.RData", repl="_multi.Rdata")
-  
-  if (file.exists(discharge_multi_model_file))   #try to load multi-model file first
+  for (target_var in c("ssc", "discharge")) #load models for all target variables
   {
-    load(file =discharge_multi_model_file)       #load mulit discharge-model from file (must be a list of models named "model_variants" or adjust name of model in next line)
-    qrf_model_discharge  =model_variants
-    rm(model_variants)
-  } else
-  if (file.exists(discharge_model_file))
-  {
-    load(file =discharge_model_file)       #load discharge-model from file (must be named "best_model_discharge" or adjust name of model in next line)
-    qrf_model_discharge  =list(best_model)
-    rm(best_model)
-  } else
-  qrf_model_discharge = NULL               #no model for discharge available
-
+    model_file = paste0("../../5_model_building/model_", target_var,".RData")
+    multi_model_file = sub(model_file, pattern = "\\.RData", repl="_multi.Rdata")
+    model_name = paste0("qrf_model_", target_var)  #name for model of target variable
+    
+    if (file.exists(multi_model_file))   #try to load multi-model file first
+    {
+      load(file =multi_model_file)       #load multi discharge-model from file (must be a list of models named "model_variants" or adjust name of model in next line)
+      assign(x = model_name, value = model_variants)
+      rm(model_variants)
+    } else
+    if (file.exists(model_file))
+    {
+      load(file = model_file)       #load discharge-model from file (must be named "best_model_discharge" or adjust name of model in next line)
+      assign(x = model_name, value = list(best_model))
+      rm(best_model)
+    } else
+    assign(x = model_name, value = NULL) #no model for discharge available
+  }
+    
+    
   if (file.exists("conf.txt"))
   { #read config file
     conf=read.table("conf.txt", header=TRUE)
