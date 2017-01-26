@@ -23,6 +23,9 @@
   do_continous_validation = FALSE #do "continuous" validation with moving blocks of test fractions (more suitable for discharge prediction)
 
   n_valid_periods = 5  ##number of validation periods  ( n-fold cross-validation by excluding every n-th part from the training data)
+  n_perturbations = NULL #number of realisations of perturbed training data to create for target variables ()
+  n_perturbations["ssc"]       = 1 
+  n_perturbations["discharge"] = 1 
 
 ##5_model_application
   n_slaves = 1 #number of slaves available (that many replicate directories will be generated)

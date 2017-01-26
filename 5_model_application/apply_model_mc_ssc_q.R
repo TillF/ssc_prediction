@@ -49,7 +49,7 @@
 # additional output of mean and median value of all realisations of each timestep
 
 # 16.3.2007
-# corrected the estimation of CI (former: l´CI of mean freight, now 95 % CI for all values)
+# corrected the estimation of CI (former: CI of mean freight, now 95 % CI for all values)
 
 # Till Francke, 29.3.2010
 

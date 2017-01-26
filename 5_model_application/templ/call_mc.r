@@ -9,7 +9,7 @@
   for (target_var in c("ssc", "discharge")) #load models for all target variables
   {
     model_file = paste0("../../5_model_building/model_", target_var,".RData")
-    multi_model_file = sub(model_file, pattern = "\\.RData", repl="_multi.Rdata")
+    multi_model_file = sub(model_file, pattern = "\\.RData", repl="_multi.RData")
     model_name = paste0("qrf_model_", target_var)  #name for model of target variable
     
     if (file.exists(multi_model_file))   #try to load multi-model file first
@@ -17,14 +17,19 @@
       load(file =multi_model_file)       #load multi discharge-model from file (must be a list of models named "model_variants" or adjust name of model in next line)
       assign(x = model_name, value = model_variants)
       rm(model_variants)
+	  print(paste0(multi_model_file," loaded."))
     } else
     if (file.exists(model_file))
     {
       load(file = model_file)       #load discharge-model from file (must be named "best_model_discharge" or adjust name of model in next line)
       assign(x = model_name, value = list(best_model))
       rm(best_model)
+	  print(paste0(multi_model_file," loaded."))
     } else
-    assign(x = model_name, value = NULL) #no model for discharge available
+	{
+		assign(x = model_name, value = NULL) #no model for discharge available
+		print(paste0(target_var,": no model loaded."))
+	}	
   }
     
     
