@@ -1,5 +1,8 @@
 # apply selected model in Monte-Carlo-mode: perform [nrealisations] by randomly choosing the prediction interval quantiles from pred_quantile
 
+# 30.1.2017
+# fixed faulty resuming from broken runs
+
 # 25.1.2017
 # support of multiple SSC models
 
@@ -37,23 +40,6 @@
 # allow direct specification of flood-scheme (skips reading from file) via parameter flood_scheme
 # write_files=FALSE disables all file output
 
-# 31.5.2010
-# discard columns not needed by the model
-
-
-# 20.4.2010
-# optional output of IQR-values of all realisations of each timestep (call with iqr=TRUE)
-# optional output of entire sampled distribution of each timestep (call with write_dist=TRUE)
-
-# 29.3.2010
-# additional output of mean and median value of all realisations of each timestep
-
-# 16.3.2007
-# corrected the estimation of CI (former: CI of mean freight, now 95 % CI for all values)
-
-# Till Francke, 29.3.2010
-
-
 # call like:
 #  apply_model_mc(gauge_name="h1",nrealisations=100,q_conf=1.00,subset_periods=c(2:2),individual=F,predictordata="ancillary_data2.RData",iqr=TRUE, write_dist=FALSE,overwrite=TRUE)
 
@@ -75,8 +61,8 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 {
 	do_plot=F
   complete_view=NULL   # ALEX: set back to NULL from TRUE
-  saves_per_period = 2  # how often memory snapshots (for resuming broken runs) are saved to disk
-	
+  save_interval = 1/4  # how often memory snapshots (for resuming broken runs) are saved to disk [minutes]
+  
 
   if (is.null(predictordata))
   { # load predictordata from ASCII file   #load predictordata of specified gauge_name prepared with gen_data_4_apply.m
@@ -206,44 +192,74 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
     append_timestepdistqfile  =file.exists(file = paste(file_prefix,"_hist_timestep_q",  ".txt",sep=""))
   }
 
+	
 	dt=as.numeric(mean(difftime(date_vec[2:100],date_vec[1:99],units="secs")))
 	if (verbose) print(paste("timestep resolution:",dt)); flush.console()
-	for (j in 1:length(subset_periods))	#treat all desired periods
+
+	
+	if (file.exists(file = "resume.RData")) #try to resume a previously interrrupted run
 	{
-    if (flood_numbering$end    [subset_periods[j]] < min(date_vec) |
-        flood_numbering$begin  [subset_periods[j]] > max(date_vec)   )
-		{
-      cat(paste("Period",flood_numbering$no[subset_periods[j]],"not covered by timeseries, skipped.\n"))
-			next									#no valid data for current period
-		}
-		
-    start_record_ix=which.min(abs(as.numeric(date_vec-flood_numbering$begin[subset_periods[j]])))	#find record in timeset corresponding to start of period
-		stop_record_ix =which.min(abs(as.numeric(date_vec-flood_numbering$end  [subset_periods[j]])))	#find record in timeset corresponding to end of period
-
-    #compute fraction of missing data
-    expected_timesteps = as.numeric(difftime(flood_numbering$end[subset_periods[j]], flood_numbering$begin[subset_periods[j]], units="sec")) / as.numeric(dt)
-    nodata_frac =  (expected_timesteps - (stop_record_ix - start_record_ix)) / expected_timesteps
-    if (nodata_frac > 0)
-      warning(round(nodata_frac*100), "% datagaps encontered in predictor data for period ",flood_numbering$no[subset_periods[j]],".")
-
-		ssc       =array(0,c(stop_record_ix-start_record_ix+1,nrealisations))	#store simulated values for each timestep and each realisation
- 		mean_ssc  =rep  (0, (stop_record_ix-start_record_ix+1))	#for storing mean of simulated values for each timestep and all realisations
- 		median_ssc=rep  (0, (stop_record_ix-start_record_ix+1))	#for storing median of simulated values for each timestep and all realisations
-    if (iqr) 
-      iqr_ssc   =cbind(median_ssc,median_ssc)        #for storing interquartile-range of simulated values for each timestep and all realisations
-  	dist_ssc_timestep=rep(NA, nrealisations)					#for collecting distribution of ssc of timestep 
-
-		q_sim       =array(0,c(stop_record_ix-start_record_ix+1,nrealisations))	#store simulated values for each timestep and each realisation
- 		mean_q  =rep  (0, (stop_record_ix-start_record_ix+1))	#for storing mean of simulated values for each timestep and all realisations
- 		median_q=rep  (0, (stop_record_ix-start_record_ix+1))	#for storing median of simulated values for each timestep and all realisations
-    if (iqr) 
-      iqr_q   =cbind(median_q,median_q)        #for storing interquartile-range of simulated values for each timestep and all realisations
-  	dist_q_timestep=rep(NA, nrealisations)					#for collecting distribution of ssc of timestep 
-
-
-
+	  load(file = "resume.RData")
+	  .Random.seed <<- seed #restore state of random number generator
+	  print("resuming previous run from resume.RData")
+	  flush.console()
+    i=i+1  #for entering next loop
+    if (i  >= stop_record_ix) #interrupted at end of inner loop
+    {  
+      i=1
+      j=j+1 
+      resumed_run = FALSE #restart with outer loop
+    } else
+    resumed_run = TRUE
+	} else
+	{  
+	  j = 1  
+	  resumed_run = FALSE
+	}  
+	
+	
+	for (j in j:length(subset_periods))	#treat all desired periods (j has been assigned/loaded in the previous step)
+	{
+    if (!resumed_run)
+  	{
+      if (flood_numbering$end    [subset_periods[j]] < min(date_vec) |
+          flood_numbering$begin  [subset_periods[j]] > max(date_vec)   )
+  		{
+        cat(paste("Period",flood_numbering$no[subset_periods[j]],"not covered by timeseries, skipped.\n"))
+  			next									#no valid data for current period
+  		}
+  		
+      start_record_ix=which.min(abs(as.numeric(date_vec-flood_numbering$begin[subset_periods[j]])))	#find record in timeset corresponding to start of period
+  		stop_record_ix =which.min(abs(as.numeric(date_vec-flood_numbering$end  [subset_periods[j]])))	#find record in timeset corresponding to end of period
+  
+      #compute fraction of missing data
+      expected_timesteps = as.numeric(difftime(flood_numbering$end[subset_periods[j]], flood_numbering$begin[subset_periods[j]], units="sec")) / as.numeric(dt)
+      nodata_frac =  (expected_timesteps - (stop_record_ix - start_record_ix)) / expected_timesteps
+      if (nodata_frac > 0)
+        warning(round(nodata_frac*100), "% datagaps encontered in predictor data for period ",flood_numbering$no[subset_periods[j]],".")
+  
+  		ssc       =array(0,c(stop_record_ix-start_record_ix+1,nrealisations))	#store simulated values for each timestep and each realisation
+   		mean_ssc  =rep  (0, (stop_record_ix-start_record_ix+1))	#for storing mean of simulated values for each timestep and all realisations
+   		median_ssc=rep  (0, (stop_record_ix-start_record_ix+1))	#for storing median of simulated values for each timestep and all realisations
+      if (iqr) 
+        iqr_ssc   =cbind(median_ssc,median_ssc)        #for storing interquartile-range of simulated values for each timestep and all realisations
+    	dist_ssc_timestep=rep(NA, nrealisations)					#for collecting distribution of ssc of timestep 
+  
+  		q_sim       =array(0,c(stop_record_ix-start_record_ix+1,nrealisations))	#store simulated values for each timestep and each realisation
+   		mean_q  =rep  (0, (stop_record_ix-start_record_ix+1))	#for storing mean of simulated values for each timestep and all realisations
+   		median_q=rep  (0, (stop_record_ix-start_record_ix+1))	#for storing median of simulated values for each timestep and all realisations
+      if (iqr) 
+        iqr_q   =cbind(median_q,median_q)        #for storing interquartile-range of simulated values for each timestep and all realisations
+    	dist_q_timestep=rep(NA, nrealisations)					#for collecting distribution of ssc of timestep 
+  
+  	  i = start_record_ix #no resuming, start from beginning
+    } else
+    resumed_run=FALSE  
+    
+		last_save = Sys.time()
+  	
 		#apply model
-		for (i in start_record_ix:stop_record_ix)	#do for all records of current period
+		for (i in i:stop_record_ix)	#do for all records of current period (i has been assigned/loaded in the previous block)
 		{
 			if (verbose) cat(paste("timestep",i-start_record_ix+1,"/",stop_record_ix-start_record_ix+1,"in period",j,"/",length(subset_periods),"\n"))		#display loop counter
 			flush.console()
@@ -254,9 +270,6 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 
 			#ssc-prediction
 			slice_width = nrealisations / length(qrf_model_ssc)  #slice (number of realisations) to fill by each of the discharge models
-			
-			#dist_ssc_timestep=as.vector(predict(qrf_model_ssc,      newdata=mydata_predict[i,ssc_model_column_indices], what =rand_quant[ 1:nrealisations]))	#do prediction for this record
-			
 			for (mod_no in 1:length(qrf_model_ssc)) #go through all discharge models in list
 			{
 			  part = ((1:nrealisations)-1) %% length(qrf_model_ssc) == (mod_no-1)  #the part to fill by the current model
@@ -264,7 +277,6 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 			}
 			
 			#Q-prediction	
-			dist_q_timestep  =rep (NA, nrealisations)	#create empty vector
 			slice_width = nrealisations / length(qrf_model_discharge)  #slice (number of realiszations) to fill by each of the discharge models
 			if (!is.null(qrf_model_discharge))
         for (mod_no in 1:length(qrf_model_discharge)) #go through all discharge models in list
@@ -310,9 +322,12 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 
       #points(mydata_predict$julian_day[i],mean_ssc_timestep,pch=".",col="red")	#plot mean (for display only)
 		
-      if ((saves_per_period > 0) && !(i %in% c(stop_record_ix,start_record_ix)))    #dump memory image during period to allow for resuming run
-         if ( (i-start_record_ix) %% ((stop_record_ix-start_record_ix)%/% min(stop_record_ix-start_record_ix ,saves_per_period+1)) == 0)
-           save.image(file = "resume.RData")
+      if (difftime(Sys.time(), last_save, units = "min") > save_interval) #dump memory image during period to allow for resuming run
+      {
+        seed = .Random.seed  #retrieve state of random number generator
+        save(file = "resume.RData", list = setdiff(ls(), c("qrf_model_ssc", "qrf_model_discharge", "predictordata")))
+        last_save = Sys.time()
+      }     
     }	
 		sed_flux=ssc * q_sim/1000		#compute sediment flux [kg/s]
 		
