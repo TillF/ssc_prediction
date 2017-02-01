@@ -61,7 +61,7 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 {
 	do_plot=F
   complete_view=NULL   # ALEX: set back to NULL from TRUE
-  save_interval = 1/4  # how often memory snapshots (for resuming broken runs) are saved to disk [minutes]
+  save_interval = 120  # how often memory snapshots (for resuming broken runs) are saved to disk [minutes]
   
 
   if (is.null(predictordata))
