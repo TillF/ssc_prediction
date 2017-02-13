@@ -3,6 +3,8 @@
 
 # for discharge and SSC data, disturb observations based on provided uncertainty in discharge and set up replicate models
 
+#application_time_scale = "daily"
+
 # clear workspace
 	rm(list = ls())
 	source("../settings.R")
@@ -24,7 +26,7 @@
   #permute training data
   source("build_validate_model.R")  #version with yearly cross validation
   
-  for (target_var in c("ssc", "discharge")
+  for (target_var in c("ssc", "discharge"))
   {
     # load training data
     org_data_file = paste0("../3_predictor_generation/ancillary_data_",tres,"_train_", target_var,".RData") 
