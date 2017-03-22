@@ -9,7 +9,7 @@ Process the numbered directories step-by-step. Where adjustments need to be made
 Stick to relative paths, change R's working directory at the very beginning to the place where the script resides (in R, click "File->Change Directory")
 
 0_data (data preparation)
-  - Provide continous data for discharge and rainfall and intermittent SSC-data in the directory 0_data/. Use "H1_discharge.txt", "TESP_5minres_1989_2010.txt" and "H1_ssc.txt" as templates (check the column names). Specify temporal resolution, names and format of date column in settings.R.
+  - Provide continous data for discharge and rainfall and intermittent SSC-data in the directory 0_data/. Use "H1_discharge.txt", "TESP_5minres_1989_2010.txt" and "H1_ssc.txt" as templates (check the column names). Ensure same timesteps in both timeseries, no gaps allowed. Specify temporal resolution, names and format of date column in settings.R.
 
 1_rainfall_correction (correction of rainfall data)
 	(obsolete for you: copy your rainfall file to 1_rainfall_correction/ and append "_corrected" to the name of your rainfall input file like "0_data/TESP_5minres_1989_2010.txt_corrected")
