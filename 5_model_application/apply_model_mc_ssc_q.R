@@ -92,7 +92,7 @@ apply_model_mc=function(gauge_name="B1",subset_preds=NULL,nrealisations=100,q_co
 
   #reduce number of realizations to multiple of number of discharge models to ensure equal shares
     nrealisations = max(which(
-                    (1:nrealisations) %% length(qrf_model_discharge) == 0 &
+                    (1:nrealisations) %% max(length(qrf_model_discharge),1) == 0 &
                     (1:nrealisations) %% length(qrf_model_ssc      ) == 0
                   )) 
                     
