@@ -5,7 +5,7 @@
 
 
 	precip_data_file = "0_data\\TESP_15minres_2010_2011.txt"    #input file containing (mutiple) rainfall series
-	fmt_precip = "%Y-%m-%d %H:%M" #input format of date column, eg "%Y-%m-%d %H:%M" or "%d.%m.%Y %H:%M"
+	fmt_precip = "d.%m.%Y %H:%M" #input format of date column, eg "%Y-%m-%d %H:%M" or "%d.%m.%Y %H:%M"
 
 	discharge_data_file = "0_data\\H1_discharge_puebla.txt" #input file containing discahrge time series (single gauge)
 	fmt_discharge = "%d.%m.%Y %H:%M" #input format of date column
