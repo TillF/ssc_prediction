@@ -26,6 +26,7 @@
   n_perturbations = NULL #number of realisations of perturbed training data to create for target variables ()
   n_perturbations["ssc"]       = 1 
   n_perturbations["discharge"] = 1 
+  replaceNAs = FALSE #replaceNAs enabled, replacing NAs by -999. MAY help with large datagaps
 
 ##5_model_application
   n_slaves = 1 #number of slaves available (that many replicate directories will be generated)
