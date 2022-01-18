@@ -53,7 +53,7 @@
         if(cum_period==1) #no actual cumulation, just offset by cumperiod
           mydata[(cum_period+1):nrow(mydata),target_columns]          = mydata   [1:(nrow(mydata)-cum_period), source_column] else
         for (j in ((-cum_start+1):nrow(mydata)))      #actual aggregation
-          mydata[j,target_columns] = apply(as.matrix(mydata[j + (cum_start : (cum_start+cum_period-1)), source_column],ncol=1), 2 ,sum,na.Rm=FALSE)
+          mydata[j,target_columns] = apply(as.matrix(mydata[j + (cum_start : (cum_start+cum_period-1)), source_column],ncol=1), 2 ,sum,na.rm=FALSE)
   
       }
 
@@ -78,7 +78,11 @@
 
     mydata = data.frame(datenum=datenum, mydata) #convert back to dataframe
     mydata$julian_day=as.POSIXlt(mydata$datenum)$yday                                    #compute julian day
-
+    trig_seq=2*pi*mydata$julian_day
+    trig_seq=trig_seq/365
+    mydata$sinDOY=sin(trig_seq)
+    mydata$cosDOY=cos(trig_seq)
+    mydata$julian_day=NULL  
 
     if (ancillary_data_filename!="")                                              #write file containing ancillary data
     {
@@ -87,7 +91,7 @@
     }
 
     #extract training data for ssc
-    mydata_training=merge(ssc_data, mydata)
+    mydata_training=merge(ssc_data, mydata, all.x=T)
     #mydata_training$discharge = NULL
     #mydata_training = na.omit(mydata_training)
     
